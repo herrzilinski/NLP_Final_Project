@@ -22,7 +22,7 @@ os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files 
 '''
 
 # %%
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 MAX_LEN = 200
 TRAIN_BATCH_SIZE = 8
@@ -94,12 +94,12 @@ testing_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
 # %%
 train_params = {'batch_size': TRAIN_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 0
+                'num_workers': 8
                 }
 
 test_params = {'batch_size': VALID_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 0
+                'num_workers': 8
                 }
 
 training_loader = DataLoader(training_set, **train_params)
