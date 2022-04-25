@@ -4,7 +4,7 @@ from sklearn import metrics
 import transformers
 import torch
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
-from transformers import BertTokenizer, BertModel, BertConfig
+from transformers import BertTokenizer, BertModel, BertConfig, DistilBertModel, DistilBertTokenizer
 from tqdm.auto import tqdm
 import os
 
@@ -18,14 +18,16 @@ os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files 
 
 
 # %%
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 MAX_LEN = 200
-TRAIN_BATCH_SIZE = 32
-VALID_BATCH_SIZE = 32
-EPOCHS = 2
+TRAIN_BATCH_SIZE = 40
+VALID_BATCH_SIZE = 40
+EPOCHS = 1
 LEARNING_RATE = 1e-05
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+# tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+
 
 # %%
 df_train_raw = pd.read_csv(DATA_DIR+'train.csv')
@@ -57,17 +59,17 @@ class CustomDataset(Dataset):
             add_special_tokens=True,
             max_length=self.max_len,
             pad_to_max_length=True,
-            return_token_type_ids=True
+            return_token_type_ids=False
         )
         ids = inputs['input_ids']
         mask = inputs['attention_mask']
-        token_type_ids = inputs["token_type_ids"]
+        # token_type_ids = inputs["token_type_ids"]
 
 
         return {
             'ids': torch.tensor(ids, dtype=torch.long),
             'mask': torch.tensor(mask, dtype=torch.long),
-            'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
+            # 'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
             'targets': torch.tensor(self.targets[index], dtype=torch.float)
         }
 
@@ -88,12 +90,12 @@ testing_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
 # %%
 train_params = {'batch_size': TRAIN_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 0
+                'num_workers': 8
                 }
 
 test_params = {'batch_size': VALID_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 0
+                'num_workers': 8
                 }
 
 training_loader = DataLoader(training_set, **train_params)
@@ -103,12 +105,17 @@ testing_loader = DataLoader(testing_set, **test_params)
 class BERTClass(torch.nn.Module):
     def __init__(self):
         super(BERTClass, self).__init__()
-        self.l1 = transformers.BertModel.from_pretrained('bert-base-uncased', return_dict=False)
+        # self.l1 = BertModel.from_pretrained('bert-base-uncased', return_dict=False)
+        self.l1 = DistilBertModel.from_pretrained('distilbert-base-uncased', return_dict=False)
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(768, 6)
 
-    def forward(self, ids, mask, token_type_ids):
-        _, output_1 = self.l1(ids, attention_mask=mask, token_type_ids=token_type_ids)
+    def forward(self, ids, mask,
+                # token_type_ids
+                ):
+        # _, output_1 = self.l1(ids, attention_mask=mask, token_type_ids=token_type_ids)
+        output_1 = self.l1(ids, attention_mask=mask, return_dict=False)
+
         output_2 = self.l2(output_1)
         output = self.l3(output_2)
         return output
@@ -132,10 +139,14 @@ def train(epoch):
     for _, data in enumerate(training_loader, 0):
         ids = data['ids'].to(device, dtype=torch.long)
         mask = data['mask'].to(device, dtype=torch.long)
-        token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
+        # token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
+
         targets = data['targets'].to(device, dtype=torch.float)
 
-        outputs = model(ids, mask, token_type_ids)
+        outputs = model(ids,
+                        mask,
+                        # token_type_ids
+                        )
 
         optimizer.zero_grad()
         loss = loss_fn(outputs, targets)
@@ -155,15 +166,19 @@ for epoch in range(EPOCHS):
 # %%
 def validation(epoch):
     model.eval()
-    fin_targets=[]
-    fin_outputs=[]
+    fin_targets = []
+    fin_outputs = []
     with torch.no_grad():
         for _, data in enumerate(testing_loader, 0):
-            ids = data['ids'].to(device, dtype = torch.long)
-            mask = data['mask'].to(device, dtype = torch.long)
-            token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
-            targets = data['targets'].to(device, dtype = torch.float)
-            outputs = model(ids, mask, token_type_ids)
+            ids = data['ids'].to(device, dtype=torch.long)
+            mask = data['mask'].to(device, dtype=torch.long)
+            # ids = ids.unsqueeze(0)
+            # token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
+            targets = data['targets'].to(device, dtype=torch.float)
+            outputs = model(ids,
+                            mask,
+                            # token_type_ids
+                            )
             fin_targets.extend(targets.cpu().detach().numpy().tolist())
             fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
     return fin_outputs, fin_targets
