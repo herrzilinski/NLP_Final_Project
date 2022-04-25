@@ -5,6 +5,7 @@ import transformers
 import torch
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 from transformers import BertTokenizer, BertModel, BertConfig
+from tqdm.auto import tqdm
 import os
 
 OR_PATH = os.getcwd()
@@ -20,9 +21,9 @@ os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 MAX_LEN = 200
-TRAIN_BATCH_SIZE = 8
-VALID_BATCH_SIZE = 4
-EPOCHS = 10
+TRAIN_BATCH_SIZE = 32
+VALID_BATCH_SIZE = 32
+EPOCHS = 2
 LEARNING_RATE = 1e-05
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -123,6 +124,8 @@ def loss_fn(outputs, targets):
 
 
 optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+num_training_steps = EPOCHS * len(training_loader)
+progress_bar = tqdm(range(num_training_steps))
 # %%
 def train(epoch):
     model.train()
@@ -142,6 +145,7 @@ def train(epoch):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        progress_bar.update(1)
 
 
 for epoch in range(EPOCHS):
