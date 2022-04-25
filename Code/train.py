@@ -62,8 +62,8 @@ class Custom_Data_loader(Dataset):
             None,
             add_special_tokens=True,
             # max_length=self.maxlen,
-            truncation=True,
-            padding=True,
+            # truncation=True,
+            pad_to_max_length=True,
             return_token_type_ids=True
         )
         ids = inputs['input_ids']
@@ -98,7 +98,7 @@ testing_loader = DataLoader(testing_set, batch_size=BATCH_SIZE, shuffle=True, nu
 class BERTFineTune(torch.nn.Module):
     def __init__(self):
         super(BERTFineTune, self).__init__()
-        self.l1 = BertModel.from_pretrained('bert-base-uncased')
+        self.l1 = BertModel.from_pretrained('bert-base-uncased', return_dict=False)
         self.l2 = torch.nn.Dropout(0.5)
         self.l3 = torch.nn.Linear(768, 6)
 
@@ -183,8 +183,8 @@ def validation(epoch):
     fin_outputs=[]
     with torch.no_grad():
         for _, data in enumerate(testing_loader, 0):
-            ids = data['ids'].to(device, dtype = torch.long)
-            mask = data['mask'].to(device, dtype = torch.long)
+            ids = data['ids'].to(device, dtype=torch.long)
+            mask = data['mask'].to(device, dtype=torch.long)
             token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
             targets = data['targets'].to(device, dtype=torch.float)
             outputs = model(ids, mask, token_type_ids)

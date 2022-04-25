@@ -1,8 +1,10 @@
 import pandas as pd
+import os
 from datasets import load_dataset
 from transformers import AutoTokenizer, DataCollatorWithPadding
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
+from transformers import BertTokenizer, BertModel, BertConfig
 from transformers import AdamW
 from transformers import get_scheduler
 import torch
@@ -25,10 +27,19 @@ xtr, xte, ytr, yte = train_test_split(df['comment_text'], df['labels'])
 df_tr = pd.DataFrame({'text':xtr, 'labels':ytr})
 df_te = pd.DataFrame({'text':xte, 'labels':yte})
 '''
+OR_PATH = os.getcwd()
+os.chdir("..")  # Change to the parent directory
+PATH = os.getcwd()
+DATA_DIR = os.getcwd() + os.path.sep + 'Data' + os.path.sep
+# MODEL_DIR = os.getcwd() + os.path.sep + 'Models' + os.path.sep
+
+os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files will be left on this directory
+
+
 
 class DatasetLoad(Dataset):
     def __init__(self):
-        self.df = pd.read_csv('/home/ubuntu/NLP/Final Project/NLP_Final_Project/Data/train.csv')
+        self.df = pd.read_csv(DATA_DIR+'train.csv')
         self.label_cols = self.df.columns[2:]
 
     def __len__(self):
@@ -78,13 +89,15 @@ train_dataloader = DataLoader(a, shuffle=True, batch_size=8, collate_fn=collate)
 
 eval_dataloader = DataLoader(a, batch_size=8, collate_fn=collate)
 
-for batch in train_dataloader:
-    break
+# for batch in train_dataloader:
+#     break
 
 
-model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=6)
-outputs = model(**batch)
-print(outputs.loss, outputs.logits.shape)
+# model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=6)
+model = BertModel.from_pretrained(checkpoint, num_labels=6)
+
+# outputs = model(**batch)
+# print(outputs.loss, outputs.logits.shape)
 
 optimizer = AdamW(model.parameters(), lr=5e-5)
 loss_func = BCEWithLogitsLoss()
@@ -111,6 +124,23 @@ lr_scheduler = get_scheduler("linear", optimizer=optimizer,
 print(num_training_steps)
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
+class BERTFineTune(torch.nn.Module):
+    def __init__(self):
+        super(BERTFineTune, self).__init__()
+        self.l1 = BertModel.from_pretrained('bert-base-uncased')
+        self.l2 = torch.nn.Dropout(0.5)
+        self.l3 = torch.nn.Linear(768, 6)
+
+    def forward(self, input_ids, attention_mask, token_type_ids):
+        _, x1 = self.l1(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
+        x2 = self.l2(x1)
+        output = self.l3(x2)
+        return output
+
+
+model = BERTFineTune()
 model.to(device)
 device
 
@@ -120,9 +150,12 @@ train_loss_set = []
 model.train()
 for epoch in range(num_epochs):
     for batch in train_dataloader:
-        batch = {k: v.to(device) for k, v in batch.items()}
+        # batch = {k: v.to(device, dtype=torch.long) for k, v in batch.items()}
+        ids = batch['input_ids'].to(device, dtype=torch.long)
+        masks = batch['attention_mask'].to(device, dtype=torch.long)
+        tokid = batch['token_type_ids'].to(device, dtype=torch.long)
         labels = batch.pop('labels')
-        outputs = model(**batch)
+        outputs = model(ids, masks, tokid)
         logits = outputs[0]
         loss = loss_func(logits, labels.type_as(logits))
         train_loss_set.append(loss.item())
