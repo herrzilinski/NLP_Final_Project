@@ -10,7 +10,10 @@ from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampl
 from transformers import BertTokenizer, BertModel, BertConfig
 from tqdm.auto import tqdm
 import os
+from sklearn.model_selection import train_test_split
 
+# Reference
+# https://towardsdatascience.com/multi-label-emotion-classification-with-pytorch-huggingfaces-transformers-and-w-b-for-tracking-a060d817923
 '''
 OR_PATH = os.getcwd()
 os.chdir("..")  # Change to the parent directory
@@ -22,23 +25,23 @@ os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files 
 '''
 
 # %%
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 MAX_LEN = 200
-TRAIN_BATCH_SIZE = 8
-VALID_BATCH_SIZE = 8
-EPOCHS = 2
-LEARNING_RATE = 1e-05
+TRAIN_BATCH_SIZE = 16
+VALID_BATCH_SIZE = 16
+EPOCHS = 3
+LEARNING_RATE = 1e-04
 tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
 
 
 # %%
 #df_train_raw = pd.read_csv(DATA_DIR+'train.csv')
-df_train_raw = pd.read_csv('/home/ubuntu/NLP/Final Project/NLP_Final_Project/Data/train.csv')
-label_names = df_train_raw.columns[2:]
-df_train = df_train_raw.copy()
-df_train['labels'] = df_train_raw[label_names].values.tolist()
-df_train = df_train[['comment_text', 'labels']]
+df_raw = pd.read_csv('/home/ubuntu/NLP/Final Project/NLP_Final_Project/Data/train.csv')
+label_names = df_raw.columns[2:]
+df = df_raw.copy()
+df['labels'] = df_raw[label_names].values.tolist()
+df2 = df[['comment_text','labels']]
 
 # %%
 class CustomDataset(Dataset):
@@ -46,7 +49,7 @@ class CustomDataset(Dataset):
     def __init__(self, dataframe, tokenizer, max_len):
         self.tokenizer = tokenizer
         self.data = dataframe
-        self.comment_text = dataframe.comment_text
+        self.comment_text = dataframe['comment_text']
         self.targets = self.data['labels']
         self.max_len = max_len
 
@@ -61,8 +64,10 @@ class CustomDataset(Dataset):
             comment_text,
             None,
             add_special_tokens=True,
-            max_length=self.max_len,
-            pad_to_max_length=True,
+            #max_length=self.max_len,
+            truncation=True,
+            padding='max_length',
+            #pad_to_max_length=True,
             return_token_type_ids=True
         )
         ids = inputs['input_ids']
@@ -79,12 +84,12 @@ class CustomDataset(Dataset):
 
 
 # %%
-train_size = 0.8
-train_dataset = df_train.sample(frac=train_size, random_state=200).reset_index(drop=True)
-test_dataset = df_train.drop(train_dataset.index).reset_index(drop=True)
+train_size = 0.75
+train_dataset = df2.sample(frac=train_size, random_state=13).reset_index(drop=True)
+test_dataset = df2.drop(train_dataset.index).reset_index(drop=True)
 
 
-print("FULL Dataset: {}".format(df_train.shape))
+print("FULL Dataset: {}".format(df.shape))
 print("TRAIN Dataset: {}".format(train_dataset.shape))
 print("TEST Dataset: {}".format(test_dataset.shape))
 
@@ -94,12 +99,12 @@ testing_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
 # %%
 train_params = {'batch_size': TRAIN_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 8
+                'num_workers': 2
                 }
 
 test_params = {'batch_size': VALID_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 8
+                'num_workers': 2
                 }
 
 training_loader = DataLoader(training_set, **train_params)
@@ -107,11 +112,9 @@ testing_loader = DataLoader(testing_set, **test_params)
 
 # %%
 
-
-
-class BERTClass(torch.nn.Module):
+class ElectraClass(torch.nn.Module):
     def __init__(self):
-        super(BERTClass, self).__init__()
+        super(ElectraClass, self).__init__()
         self.l1 = ElectraModel.from_pretrained('google/electra-small-discriminator', return_dict=False)
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(256, 6)
@@ -123,7 +126,7 @@ class BERTClass(torch.nn.Module):
         return output.mean(1)
 
 
-model = BERTClass()
+model = ElectraClass()
 model.to(device)
 
 
@@ -136,6 +139,7 @@ optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
 num_training_steps = EPOCHS * len(training_loader)
 progress_bar = tqdm(range(num_training_steps))
 # %%
+
 def train(epoch):
     model.train()
     for _, data in enumerate(training_loader, 0):
@@ -162,6 +166,9 @@ for epoch in range(EPOCHS):
 
 
 # %%
+num_testing_steps = EPOCHS * len(testing_loader)
+progress_bar = tqdm(range(num_testing_steps))
+
 def validation(epoch):
     model.eval()
     fin_targets=[]
@@ -175,6 +182,10 @@ def validation(epoch):
             outputs = model(ids, mask, token_type_ids)
             fin_targets.extend(targets.cpu().detach().numpy().tolist())
             fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
+            if _ % 5000 == 0:
+                print(f'Epoch: {epoch}')
+                progress_bar.update(1)
+
     return fin_outputs, fin_targets
 
 
@@ -187,3 +198,7 @@ for epoch in range(EPOCHS):
     print(f"Accuracy Score = {accuracy}")
     print(f"F1 Score (Micro) = {f1_score_micro}")
     print(f"F1 Score (Macro) = {f1_score_macro}")
+    targetss = np.array(targets)
+    fpr_micro, tpr_micro, _ = metrics.roc_curve(targetss.ravel(), outputs.ravel())
+    auc_micro = metrics.auc(fpr_micro, tpr_micro)
+    print(f"AUC Score (Micro) = {auc_micro}")
