@@ -34,7 +34,7 @@ MAX_LEN = 200
 TRAIN_BATCH_SIZE = 16
 VALID_BATCH_SIZE = 16
 EPOCHS = 10
-LEARNING_RATE = 1e-04
+LEARNING_RATE = 1e-05
 THRESHOLD = 0.5
 SAVE_MODEL = True
 tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
@@ -224,7 +224,7 @@ def metrics_func(metrics, aggregates, y_true, y_pred):
 
 
 # %%
-def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
+def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on, from_checkpoint=False):
 
     cont = 0
     train_loss_item = list([])
@@ -240,6 +240,13 @@ def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
 
     for epoch in range(EPOCHS):
         train_loss, steps_train = 0, 0
+
+        if from_checkpoint and epoch == 0:
+            checkpoint = torch.load(f"model_{NICKNAME}.pt", map_location=device)
+            model.load_state_dict(checkpoint)
+            model.to(device)
+        else:
+            pass
 
         model.train()
 
@@ -293,7 +300,7 @@ def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
         # Metric Evaluation
         train_metrics = metrics_func(list_of_metrics, list_of_agg, real_labels[1:], pred_labels)
 
-        xstrres = "Epoch {}: ".format(epoch)
+        xstrres = "Epoch {}: ".format(epoch+1)
         for met, dat in train_metrics.items():
             xstrres = xstrres +' Train '+ met + ' {:.5f}'.format(dat)
 
@@ -356,7 +363,7 @@ def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
 
         avg_test_loss = test_loss / steps_test
 
-        xstrres = "Epoch {}: ".format(epoch)
+        xstrres = "Epoch {}: ".format(epoch+1)
         for met, dat in test_metrics.items():
             xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
             if met == save_on:
@@ -389,46 +396,8 @@ def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
 
 
 # %%
-# num_testing_steps = EPOCHS * len(testing_loader)
-# progress_bar = tqdm(range(num_testing_steps))
-#
-#
-# def validation(epoch):
-#     model.eval()
-#     fin_targets = []
-#     fin_outputs = []
-#     with torch.no_grad():
-#         for _, data in enumerate(testing_loader, 0):
-#             ids = data['ids'].to(device, dtype=torch.long)
-#             mask = data['mask'].to(device, dtype=torch.long)
-#             token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
-#             targets = data['targets'].to(device, dtype=torch.float)
-#             outputs = model(ids, mask, token_type_ids)
-#             fin_targets.extend(targets.cpu().detach().numpy().tolist())
-#             fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
-#             if _ % 5000 == 0:
-#                 print(f'Epoch: {epoch}')
-#                 progress_bar.update(1)
-#
-#     return fin_outputs, fin_targets
-#
-#
-# for epoch in range(EPOCHS):
-#     outputs, targets = validation(epoch)
-#     outputs = np.array(outputs) >= THRESHOLD
-#     accuracy = metrics.accuracy_score(targets, outputs)
-#     f1_score_micro = metrics.f1_score(targets, outputs, average='micro')
-#     f1_score_macro = metrics.f1_score(targets, outputs, average='macro')
-#     print(f"Accuracy Score = {accuracy}")
-#     print(f"F1 Score (Micro) = {f1_score_micro}")
-#     print(f"F1 Score (Macro) = {f1_score_macro}")
-#     targetss = np.array(targets)
-#     fpr_micro, tpr_micro, _ = metrics.roc_curve(targetss.ravel(), outputs.ravel())
-#     auc_micro = metrics.auc(fpr_micro, tpr_micro)
-#     print(f"AUC Score (Micro) = {auc_micro}")
-
 
 if __name__ == '__main__':
     list_of_metrics = ['acc', 'hlm']
     list_of_agg = ['sum', 'avg']
-    train_val(training_loader, testing_loader, list_of_metrics, list_of_agg, save_on='sum')
+    train_val(training_loader, testing_loader, list_of_metrics, list_of_agg, save_on='sum', from_checkpoint=True)
