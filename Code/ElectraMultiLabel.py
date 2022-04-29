@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 
 # Reference
 # https://towardsdatascience.com/multi-label-emotion-classification-with-pytorch-huggingfaces-transformers-and-w-b-for-tracking-a060d817923
-'''
+
 OR_PATH = os.getcwd()
 os.chdir("..")  # Change to the parent directory
 PATH = os.getcwd()
@@ -22,10 +22,10 @@ DATA_DIR = os.getcwd() + os.path.sep + 'Data' + os.path.sep
 # MODEL_DIR = os.getcwd() + os.path.sep + 'Models' + os.path.sep
 
 os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files will be left on this directory
-'''
+
 
 # %%
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 MAX_LEN = 200
 TRAIN_BATCH_SIZE = 16
@@ -37,7 +37,7 @@ tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator
 
 # %%
 #df_train_raw = pd.read_csv(DATA_DIR+'train.csv')
-df_raw = pd.read_csv('/home/ubuntu/NLP/Final Project/NLP_Final_Project/Data/train.csv')
+df_raw = pd.read_csv(DATA_DIR + 'train.csv')
 label_names = df_raw.columns[2:]
 df = df_raw.copy()
 df['labels'] = df_raw[label_names].values.tolist()
@@ -99,12 +99,12 @@ testing_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
 # %%
 train_params = {'batch_size': TRAIN_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 2
+                'num_workers': 4
                 }
 
 test_params = {'batch_size': VALID_BATCH_SIZE,
                 'shuffle': True,
-                'num_workers': 2
+                'num_workers': 4
                 }
 
 training_loader = DataLoader(training_set, **train_params)

@@ -33,7 +33,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_LEN = 200
 TRAIN_BATCH_SIZE = 16
 VALID_BATCH_SIZE = 16
-EPOCHS = 3
+EPOCHS = 10
 LEARNING_RATE = 1e-04
 THRESHOLD = 0.5
 SAVE_MODEL = True
@@ -142,7 +142,7 @@ criterion = torch.nn.BCEWithLogitsLoss()
 
 optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
 # num_training_steps = EPOCHS * len(training_loader)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
 
 # %%
 def metrics_func(metrics, aggregates, y_true, y_pred):
@@ -222,39 +222,6 @@ def metrics_func(metrics, aggregates, y_true, y_pred):
 
     return res_dict
 
-
-
-# %%
-# def train_val(n_epoch):
-#     for epoch in range(n_epoch):
-#         train_loss, steps_train = 0, 0
-#         model.train()
-#         with tqdm(total=len(training_loader), desc="Epoch {}".format(epoch)) as pbar:
-#             for _, data in enumerate(training_loader, 0):
-#                 ids = data['ids'].to(device, dtype=torch.long)
-#                 mask = data['mask'].to(device, dtype=torch.long)
-#                 token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
-#                 targets = data['targets'].to(device, dtype=torch.float)
-#
-#                 outputs = model(ids, mask, token_type_ids)
-#
-#                 optimizer.zero_grad()
-#                 loss = criterion(outputs, targets)
-#                 # if _ % 5000 == 0:
-#                 #     print(f'Epoch: {epoch}, Loss:  {loss.item()}')
-#
-#                 optimizer.zero_grad()
-#                 loss.backward()
-#                 optimizer.step()
-#                 train_loss += loss.item()
-#                 steps_train += 1
-#
-#                 pbar.update(1)
-#                 pbar.set_postfix_str("Train Loss: {:.5f}".format(train_loss / steps_train))
-#
-#
-# for epoch in range(EPOCHS):
-#     train_val(epoch)
 
 # %%
 def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on):
