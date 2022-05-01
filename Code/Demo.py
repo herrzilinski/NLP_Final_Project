@@ -103,7 +103,8 @@ model = ElectraClass()
 model2 = ElectraClass()
 
 # model1.to(device)
-model.load_state_dict(torch.load(MODEL_DIR + 'model_Electra_1.pt'))
+# model.load_state_dict(torch.load(MODEL_DIR + 'model_Electra_1.pt'))
+model.load_state_dict(torch.load(MODEL_DIR + 'modelSampled.pt'), strict=False)
 model.eval()
 # model2.eval()
 
@@ -113,7 +114,7 @@ input2 = "Your vandalism to the Matt Shirvington article has been reverted.  " \
 input3 = "Please stop. If you continue to ignore our policies by introducing " \
          "inappropriate pages to Wikipedia, you will be blocked."  # 0,0,0,1,0,0
 input4 = "User:NHRHS2010 is a homo like mitt romney is. "  # 1,0,1,0,1,1
-input5 = "There is a special place reserved for you in hell, you nazi piece of shit"  # Original Text, for result only
+input5 = "There is a special place reserved for you in hell, you racist piece of shit"  # Original Text, for result only
 
 
 # testing_set = CustomDataset(df3, tokenizer, 200)
@@ -151,7 +152,7 @@ def toxicity_detection(text=None):
 
 
 # %%
-toxicity_detection(input4)
+toxicity_detection(input5)
 
 # %%
 # num_testing_steps = EPOCHS * len(testing_loader)
