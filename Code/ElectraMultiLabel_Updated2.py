@@ -140,12 +140,14 @@ class ElectraClass(torch.nn.Module):
         self.l1 = ElectraModel.from_pretrained('google/electra-small-discriminator', return_dict=False)
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(256, OUTPUTS_a)
+        self.act = torch.nn.Sigmoid()
 
     def forward(self, ids, mask, token_type_ids):
         output_1 = self.l1(ids, attention_mask=mask, token_type_ids=token_type_ids)
         output_2 = self.l2(output_1[0])
         output = self.l3(output_2)
-        return output.mean(1)
+        pool = output.mean(1)
+        return self.act(pool)
 
 
 model = ElectraClass()
