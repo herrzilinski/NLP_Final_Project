@@ -143,7 +143,9 @@ def toxicity_detection(text=None):
     if len(res) == 0:
         print('No toxicity detected.')
     else:
-        print(res)
+        print('Labels :', list(label_names.values))
+        print('Output :', predicted1)
+        print('Prediction :', res)
 
     # outputs2 = model2(ids, mask, token_type_ids)
     # predicted2 = outputs2.detach().cpu().numpy()
