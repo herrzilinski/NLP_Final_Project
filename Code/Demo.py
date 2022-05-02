@@ -99,22 +99,19 @@ class ElectraClass(torch.nn.Module):
         return self.act(pool)
 
 
-model = ElectraClass()
-model2 = ElectraClass()
 
-# model1.to(device)
-# model.load_state_dict(torch.load(MODEL_DIR + 'model_Electra_1.pt'))
-model.load_state_dict(torch.load(MODEL_DIR + 'modelSampled.pt'), strict=False)
-model.eval()
-# model2.eval()
-
-input1 = 'COCKSUCKER BEFORE YOU PISS AROUND ON MY WORK'  # 1,1,1,0,1,0
-input2 = "Your vandalism to the Matt Shirvington article has been reverted.  " \
-         "Please don't do it again, or you will be banned."  # 0,0,0,0,0,0
-input3 = "Please stop. If you continue to ignore our policies by introducing " \
-         "inappropriate pages to Wikipedia, you will be blocked."  # 0,0,0,1,0,0
-input4 = "User:NHRHS2010 is a homo like mitt romney is. "  # 1,0,1,0,1,1
-input5 = "There is a special place reserved for you in hell, you racist piece of shit"  # Original Text, for result only
+# %%
+input1 = ":Dear god this site is horrible."  # 0,0,0,0,0,0
+input2 = ":If you have a look back at the source, the information I updated was the correct form. " \
+         "I can only guess the source hadn't updated. " \
+         "I shall update the information once again but thank you for your message."  # 0,0,0,0,0,0
+input3 = "DJ Robinson is gay as hell! he sucks his dick so much!!!!!"  # 1,0,1,0,1,1
+input4 = "::No, he is an arrogant, self serving, immature idiot. Get it right."  # 1,0,1,0,1,0
+input5 = "== All admins must DIE! == "  # 1,0,0,1,0,0
+input6 = ", you stupid retard, or I will kill you!!!   ]]"  # 1,1,1,1,1,0
+input7 = "a wild ass contains dick in the pussy"  # 1,1,1,0,0,0
+input8 = "There is a special place reserved for you in hell, you nazi piece of shit"  # Original, Toxic, insult
+input9 = "Sorry, I shouldn't argue with you. I'm outta here... to sleep with your MAMA!"  # Original, Obscene Sarcasm
 
 
 # testing_set = CustomDataset(df3, tokenizer, 200)
@@ -126,6 +123,10 @@ def toxicity_detection(text=None):
     if not isinstance(text, str):
         raise ValueError('message must be a string!')
 
+    model = ElectraClass()
+    model.load_state_dict(torch.load(MODEL_DIR + 'modelElectraSampled2.pt'), strict=False)
+    model.eval()
+
     testing_set = CustomDataset(text, tokenizer, 200)
     testing_loader = DataLoader(testing_set, batch_size=1)
 
@@ -134,17 +135,17 @@ def toxicity_detection(text=None):
         mask = samp['mask']  # .to(device, dtype=torch.long)
         token_type_ids = samp['token_type_ids']  # .to(device, dtype=torch.long)
 
-    outputs1 = model(ids, mask, token_type_ids)
-    predicted1 = outputs1.detach().cpu().numpy()
-    predicted1[predicted1 >= 0.5] = 1
-    predicted1[predicted1 < 0.5] = 0
-    res = [label_names[x] for x in range(6) if predicted1.flatten()[x] == 1]
+    outputs = model(ids, mask, token_type_ids)
+    predicted = outputs.detach().cpu().numpy()
+    predicted[predicted >= 0.5] = 1
+    predicted[predicted < 0.5] = 0
+    res = [label_names[x] for x in range(6) if predicted.flatten()[x] == 1]
 
     if len(res) == 0:
         print('No toxicity detected.')
     else:
         print('Labels :', list(label_names.values))
-        print('Output :', predicted1)
+        print('Output :', predicted)
         print('Prediction :', res)
 
     # outputs2 = model2(ids, mask, token_type_ids)
@@ -154,43 +155,4 @@ def toxicity_detection(text=None):
 
 
 # %%
-toxicity_detection(input5)
-
-# %%
-# num_testing_steps = EPOCHS * len(testing_loader)
-# progress_bar = tqdm(range(num_testing_steps))
-#
-#
-# def validation(epoch):
-#     model.eval()
-#     fin_targets = []
-#     fin_outputs = []
-#     with torch.no_grad():
-#         for _, data in enumerate(testing_loader, 0):
-#             ids = data['ids'].to(device, dtype=torch.long)
-#             mask = data['mask'].to(device, dtype=torch.long)
-#             token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
-#             targets = data['targets'].to(device, dtype=torch.float)
-#             outputs = model(ids, mask, token_type_ids)
-#             fin_targets.extend(targets.cpu().detach().numpy().tolist())
-#             fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
-#             if _ % 5000 == 0:
-#                 print(f'Epoch: {epoch}')
-#                 progress_bar.update(1)
-#
-#     return fin_outputs, fin_targets
-#
-#
-# for epoch in range(EPOCHS):
-#     outputs, targets = validation(epoch)
-#     outputs = np.array(outputs) >= THRESHOLD
-#     accuracy = metrics.accuracy_score(targets, outputs)
-#     f1_score_micro = metrics.f1_score(targets, outputs, average='micro')
-#     f1_score_macro = metrics.f1_score(targets, outputs, average='macro')
-#     print(f"Accuracy Score = {accuracy}")
-#     print(f"F1 Score (Micro) = {f1_score_micro}")
-#     print(f"F1 Score (Macro) = {f1_score_macro}")
-#     targetss = np.array(targets)
-#     fpr_micro, tpr_micro, _ = metrics.roc_curve(targetss.ravel(), outputs.ravel())
-#     auc_micro = metrics.auc(fpr_micro, tpr_micro)
-#     print(f"AUC Score (Micro) = {auc_micro}")
+toxicity_detection(input9)
