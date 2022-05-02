@@ -124,7 +124,7 @@ def toxicity_detection(text=None):
         raise ValueError('message must be a string!')
 
     model = ElectraClass()
-    model.load_state_dict(torch.load(MODEL_DIR + 'modelElectraSampled2.pt'), strict=False)
+    model.load_state_dict(torch.load(MODEL_DIR + 'model_Electra_1.pt'), strict=False)
     model.eval()
 
     testing_set = CustomDataset(text, tokenizer, 200)

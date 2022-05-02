@@ -192,7 +192,7 @@ eval_loader = DataLoader(eval_set, **eval_params)
 def eval(list_of_metrics, list_of_agg):
 
     model = ElectraClass()
-    checkpoint = torch.load(MODEL_DIR + 'modelElectraSampled2.pt')
+    checkpoint = torch.load(MODEL_DIR + 'model_Electra_1.pt')
     model.load_state_dict(checkpoint, strict=False)
 
     if torch.cuda.device_count() > 1:

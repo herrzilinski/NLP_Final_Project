@@ -1,6 +1,5 @@
 import pandas as pd
-from datasets import load_dataset
-from transformers import AutoTokenizer, DataCollatorWithPadding, BertModel, BertConfig, ElectraTokenizer, ElectraModel
+from transformers import AutoTokenizer, ElectraTokenizer, ElectraModel
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_score, matthews_corrcoef
@@ -8,11 +7,9 @@ import transformers
 import torch
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from transformers import BertTokenizer, BertModel, BertConfig
 from tqdm.auto import tqdm
 import os
 from torch import nn
-from sklearn.model_selection import train_test_split
 import sys
 sys.path.append('/home/ubuntu/NLP/Final Project/NLP_Final_Project/Code')
 from sampler import MultilabelBalancedRandomSampler
@@ -26,7 +23,7 @@ OR_PATH = os.getcwd()
 os.chdir("..")  # Change to the parent directory
 PATH = os.getcwd()
 DATA_DIR = os.getcwd() + os.path.sep + 'Data' + os.path.sep
-# MODEL_DIR = os.getcwd() + os.path.sep + 'Models' + os.path.sep
+MODEL_DIR = os.getcwd() + os.path.sep + 'Models' + os.path.sep
 
 os.chdir(OR_PATH)  # Come back to the folder where the code resides , all files will be left on this directory
 
@@ -395,7 +392,7 @@ def train_val(train_ds, test_ds, list_of_metrics, list_of_agg, save_on, from_che
         print(xstrres)
 
         if met_test > met_test_best and SAVE_MODEL:
-            torch.save(model.state_dict(), "model_{}.pt".format(NICKNAME))
+            torch.save(model.state_dict(), MODEL_DIR + "model_{}.pt".format(NICKNAME))
             print("The model has been saved!")
             met_test_best = met_test
 
